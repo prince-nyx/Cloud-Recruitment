@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+const logfile_path = (string) '/var/log/php-error.log';
 
 function load_logfile(): array | false
 {
@@ -9,7 +10,7 @@ function load_logfile(): array | false
     # 1 - Server    4 - Status      7 - rt      10 - specs
     # 2 - Time      5 - Size        8 - serial  11 - not_after
 
-    $env_var_logfile = (string) 'LOGFILE';
+    $env_var_logfile = (string) 'LOGFIL';
     $field_cut_index = (int) 13;
     $regex_split = (string) '/ ([^ ]*?)=|(?= )((?! \/).)(?!HTTP)/';
     $regex_replace = (string) '/"/';
@@ -18,13 +19,16 @@ function load_logfile(): array | false
     {
         return $array_of_log_entries = (array) array_chunk(preg_replace($regex_replace, '', preg_split($regex_split, file_get_contents(getenv($env_var_logfile)))), $field_cut_index);
     }
-    catch (TypeError) { return false; }
+    catch (TypeError $exception)
+    { 
+        error_log($exception->getMessage()."\n", 3, logfile_path);
+        return false; 
+    }
 }
-
 
 $array_of_log_entries = (array) load_logfile();
 
-if ($array_of_log_entries) 
+if (gettype($array_of_log_entries) == 'Array') 
 {
     foreach ($array_of_log_entries[0] as $val)
     {
