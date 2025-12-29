@@ -42,14 +42,23 @@ function get_top_serial_by_connections(array $array_of_serials, int $start, int 
     }
 }
 
-function load_specs(string $string_to_decrypt, int $index): array | string
+function load_specs(string $string_to_decrypt, int $index): array
 {
-    try { return json_decode(gzdecode(base64_decode($string_to_decrypt)), true)['mac']; }
+    $invalid = (array) ['invalid'];
+
+    $base_decode = (string) base64_decode($string_to_decrypt);
+    
+    try { $base_extracted = (string) gzdecode($base_decode); }
     catch (ErrorException $exception)
     {
         error_log("$index: ".$exception->getMessage()."\n", 3, logfile_path);
-        return 'invalid';
+        return $invalid;
     }
+
+    $specs = (array) json_decode($base_extracted, true);
+    if (json_last_error() !== JSON_ERROR_NONE) { return $invalid; }
+    
+    return $specs;
 }
 
 function get_top_serial_by_devices(array $array_of_log_entries_adjusted, array $array_of_serials, int $start, int $end): void
@@ -63,7 +72,7 @@ function get_top_serial_by_devices(array $array_of_log_entries_adjusted, array $
         if (!isset($entry['serial'], $entry['specs'])) { continue; }
 
         $serial = (string) $entry['serial'];
-        $spec = (string) $entry['specs'];
+        $spec = (string) $entry['specs']['mac'];
 
         if (!isset($array_of_serials[$serial])) { continue; }
 
@@ -102,9 +111,32 @@ $array_of_log_entries_adjusted = (array) [];
 
 for ($i = (int) 0; $i < count($array_of_log_entries) - 1; $i+=2)
 {
-    $temp_array = (array) [$array_of_log_entries[$i][1] => $array_of_log_entries[$i][2], $array_of_log_entries[$i+1][1] => load_specs($array_of_log_entries[$i+1][2], $i+1)];   
+    $specx = (array) load_specs($array_of_log_entries[$i+1][2], $i+1);
+
+    $array_of_specs = [];
+
+    if (count($specx) > 1)
+    { 
+        $array_of_specs['mac'] = $specx['mac'];
+        $array_of_specs['arch'] = $specx['architecture'];
+        $array_of_specs['machine'] = $specx['machine'];
+        $array_of_specs['cpu'] = $specx['cpu'];
+    }
+    else 
+    { 
+        $array_of_specs['mac'] = $specx[0];
+        $array_of_specs['arch'] = $specx[0];
+        $array_of_specs['machine'] = $specx[0];
+        $array_of_specs['cpu'] = $specx[0]; }
+    
+    $temp_array = (array)
+    [
+        $array_of_log_entries[$i][1] => $array_of_log_entries[$i][2],
+        $array_of_log_entries[$i+1][1] => $array_of_specs
+    ];
+    
     $array_of_log_entries_adjusted[] = (array) $temp_array;
-} 
+}
 
 $array_of_serials = (array) array_count_values(array_column($array_of_log_entries_adjusted, 'serial'));
 $array_of_specs = (array) array_column($array_of_log_entries_adjusted, 'specs');
