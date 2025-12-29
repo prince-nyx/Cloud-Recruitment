@@ -38,7 +38,7 @@ function get_top_serial_by_connections(array $array_of_serials, int $start, int 
 
     foreach ($array_of_sliced_serials as $serial => $value)
     {
-        echo "<pre>Serial no.:&#09;$serial<br>Connections:&#09;$value<br>";
+        echo "<pre>Serial no.:&#09;$serial<br>Connections:&#09;$value</pre>";
     }
 }
 
@@ -86,7 +86,7 @@ function get_top_serial_by_devices(array $array_of_log_entries_adjusted, array $
 
     foreach (array_slice($array_of_devices_by_serial, $start, $end) as $serial)
     {
-        echo "<pre>Serial no.:&#09;".$serial[2]."<br>Devices:&#09;".$serial[0]."</pre><pre>&#09;".implode('<br>&#09;', array_keys($serial[1]))."</pre><br>";
+        echo "<pre>Serial no.:&#09;".$serial[2]."<br>Devices:&#09;".$serial[0]."</pre><pre>&#09;".implode('<br>&#09;', array_keys($serial[1]))."</pre>";
     }
 }
 
