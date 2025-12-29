@@ -1,23 +1,22 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types=0);
 const logfile_path = (string) '/var/log/php-error.log';
 
 function load_logfile(): array | false
 {
-    # Splits each entry of the logfile into an array (each field gets single index)
-    # 0 - IP        3 - Protocol    6 - proxy    9 - version    12 - remaining_days
-    # 1 - Server    4 - Status      7 - rt      10 - specs
-    # 2 - Time      5 - Size        8 - serial  11 - not_after
+    # Matches the wanted fields (currently: serial & specs) in the logfile and returns them.
 
-    $env_var_logfile = (string) 'LOGFIL';
+    $env_var_logfile = (string) 'LOGFILE';
     $field_cut_index = (int) 13;
-    $regex_split = (string) '/ ([^ ]*?)=|(?= )((?! \/).)(?!HTTP)/';
-    $regex_replace = (string) '/"/';
-    
+    $regex = (string) '/(specs|serial)=([^ \t\r\n]+)/'; 
+
     try
     {
-        return $array_of_log_entries = (array) array_chunk(preg_replace($regex_replace, '', preg_split($regex_split, file_get_contents(getenv($env_var_logfile)))), $field_cut_index);
+        $array_of_matches = (array) [];
+        preg_match_all($regex, file_get_contents(getenv($env_var_logfile)), $array_of_matches, PREG_SET_ORDER);
+        
+        return $array_of_matches;
     }
     catch (TypeError $exception)
     { 
@@ -27,13 +26,22 @@ function load_logfile(): array | false
 }
 
 $array_of_log_entries = (array) load_logfile();
+$array_of_log_entries_adjusted = (array) [];
 
-if (gettype($array_of_log_entries) == 'Array') 
+# Merge data of serial and specs into one array.
+# TODO: adjust if using more fields in future.
+for ($i = 0; $i < count($array_of_log_entries) - 1; $i+=2)
 {
-    foreach ($array_of_log_entries[0] as $val)
-    {
-        echo $val . "<br>";
-    }
-}
+    $temp_array = (array) [$array_of_log_entries[$i][1] => $array_of_log_entries[$i][2], $array_of_log_entries[$i+1][1] => $array_of_log_entries[$i+1][2]];
+    $array_of_log_entries_adjusted[] = $temp_array;
+} 
+
+$array_of_serials = array_column($array_of_log_entries_adjusted, 'serial');
+
+$array_of_serials = (array) array_count_values($array_of_serials);
+arsort($array_of_serials);
+$array_of_10_serials = (array) array_slice($array_of_serials, 0, 10);
+
+print_r($array_of_10_serials);
 
 ?>
