@@ -30,7 +30,7 @@ function load_logfile_in_array(): array | false
     }
 }
 
-function get_top_serial_by_connections(array $array_of_serials, int $start, int $end)
+function get_top_serial_by_connections(array $array_of_serials, int $start, int $end): void
 {
     $array_of_sliced_serials = (array) array_slice($array_of_serials, $start, $end);
     
@@ -103,7 +103,7 @@ $array_of_log_entries_adjusted = (array) [];
 for ($i = (int) 0; $i < count($array_of_log_entries) - 1; $i+=2)
 {
     $temp_array = (array) [$array_of_log_entries[$i][1] => $array_of_log_entries[$i][2], $array_of_log_entries[$i+1][1] => load_specs($array_of_log_entries[$i+1][2], $i+1)];   
-    $array_of_log_entries_adjusted[] = $temp_array;
+    $array_of_log_entries_adjusted[] = (array) $temp_array;
 } 
 
 $array_of_serials = (array) array_count_values(array_column($array_of_log_entries_adjusted, 'serial'));
