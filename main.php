@@ -87,7 +87,7 @@ function get_spec_related_fields(array $array_of_log_entries_adjusted, array $ar
 
         if (!$devices)
         {
-            $spec = (string) $entry[$first_val]['mac'];
+            $spec = (string) $entry[$second_val];
             $serial = (string) $entry[$first_val][$type];
         }
         else
@@ -101,7 +101,8 @@ function get_spec_related_fields(array $array_of_log_entries_adjusted, array $ar
 
     foreach ($array_of_devices_by_serial as $serial => &$value)
     {
-        $value = (array) [
+        $value = (array)
+        [
             count($value['vals']),
             $value['vals'],
             $serial
@@ -111,25 +112,28 @@ function get_spec_related_fields(array $array_of_log_entries_adjusted, array $ar
 
     arsort($array_of_devices_by_serial);
     
-    $title = (string) 'Devices';
+    $title = $description_counter = (string) 'Devices';
     $description = (string) 'Serial no.';
+
     if (!$devices)
     {
         $title = $type;
         $description = $type;
+        $description_counter = 'Serials';
+        
         if ($type === 'cpu') { $description = "Processor"; }
     }
     
     echo '<div><h1>' . $title . '</h1>';
     foreach (array_slice($array_of_devices_by_serial, $start, $end) as $serial)
     {
-        echo '<pre>' . $description . ': &#09;' . $serial[2] . '<br>Devices:&#09;' . $serial[0] . '</pre><nav><ul><li>' . implode('</li><li>', array_keys($serial[1])) . '</li></ul></nav>';
+        echo '<pre>' . $description . ': &#09;' . $serial[2] . '<br>' . $description_counter . ':&#09;' . $serial[0] . '</pre><nav><ul><li>' . implode('</li><li>', array_keys($serial[1])) . '</li></ul></nav>';
     }
     echo '</div>';
 }
 
 
-echo '<style>* { font-family: Consolas, monaco, monospace; } nav ul{height:200px; width:80%;} nav ul{overflow:hidden; overflow-y:scroll;} div {display:inline-block; vertical-align:top; padding: 1em; height: 50%; overflow: hidden; overflow-y:scroll;}</style>';
+echo '<style>* { font-family: Consolas, monaco, monospace; } nav ul{height:200px; width:80%;} nav ul{overflow:hidden; overflow-y:scroll;} div {display:inline-block; vertical-align:top; padding: 1em; width: 30%; height: 47%; overflow: hidden; overflow-y:scroll;}</style>';
 
 $array_of_log_entries = (array) load_logfile_in_array();
 $array_of_log_entries_adjusted = (array) [];
