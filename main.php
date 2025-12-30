@@ -1,7 +1,7 @@
 <?php
 
 declare(strict_types = 1);
-const logfile_path = (string) '/var/log/php-error.log';
+const logfile_path = '/var/log/php-error.log';
 
 set_error_handler(function ($severity, $message, $file, $line)
 {
@@ -11,16 +11,16 @@ set_error_handler(function ($severity, $message, $file, $line)
 function load_logfile_in_array(): array | false
 {
     # Matches the wanted fields (currently: serial & specs) in the logfile and returns them.
+    # Sepcs is used since a few lines have this typo. // most likely a wanted stepping stone :).
 
-    $env_var_logfile = (string) 'LOGFILE';
-    $field_cut_index = (int) 13;
-    $regex = (string) '/(sepcs|specs|serial)=([^ \t\r\n]+)/';
+    $env_var_logfile = 'LOGFILE';
+    $regex = '/(sepcs|specs|serial)=([^ \t\r\n]+)/';
 
     try
     {
-        $array_of_matches = (array) [];
+        $array_of_matches = [];
         preg_match_all($regex, file_get_contents(getenv($env_var_logfile)), $array_of_matches, PREG_SET_ORDER);
-        
+
         return $array_of_matches;
     }
     catch (TypeError $exception)
@@ -32,7 +32,7 @@ function load_logfile_in_array(): array | false
 
 function get_top_serial_by_connections(array $array_of_serials, int $start, int $end): void
 {
-    $array_of_sliced_serials = (array) array_slice($array_of_serials, $start, $end);
+    $array_of_sliced_serials = array_slice($array_of_serials, $start, $end);
 
     echo '<div><h1>Connections</h1>';
 
@@ -45,11 +45,12 @@ function get_top_serial_by_connections(array $array_of_serials, int $start, int 
 
 function load_specs(string $string_to_decrypt, int $index): array
 {
-    $invalid = (array) ['invalid'];
+    $invalid = ['invalid'];
 
-    $base_decode = (string) base64_decode($string_to_decrypt);
+    $base_decode = base64_decode($string_to_decrypt);
+    if ($base_decode === false) { return $invalid; }
 
-    try { $base_extracted = (string) gzdecode($base_decode); }
+    try { $base_extracted = gzdecode($base_decode); }
     catch (ErrorException $exception)
     {
         error_log("$index: ".$exception->getMessage()."\n", 3, logfile_path);
@@ -58,72 +59,66 @@ function load_specs(string $string_to_decrypt, int $index): array
 
     $specs = (array) json_decode($base_extracted, true);
     if (json_last_error() !== JSON_ERROR_NONE) { return $invalid; }
-    
+
     return $specs;
 }
 
-function get_spec_related_fields(array $array_of_log_entries_adjusted, array $array_of_serials, int $start, int $end, bool $devices = true, string $type = 'mac'): void
+function swap_strings(string &$x, string &$y): void
 {
-    # Produce an array of all serials and the mac's they are used by.
+    $temp = $x;
+    $x = $y;
+    $y = $temp;
+}
 
-    $array_of_devices_by_serial = (array) [];
+function get_spec_related_fields(array $array_of_log_entries_adjusted, int $start, int $end, bool $devices = true, string $type = 'mac'): void
+{
+    # Produce an array of all serials and the type they are used by.
+
+    $array_of_devices_by_serial = [];
 
     foreach ($array_of_log_entries_adjusted as $entry)
     {
-        if (!$devices)
-        {
-            $first_val = (string) 'specs';
-            $second_val = (string) 'serial';
+        $first_val = 'serial';
+        $second_val = 'specs';
 
-            if (!isset($entry[$first_val], $entry[$second_val])) { continue; }
-        }
-        else
-        {
-            $first_val = (string) 'serial';
-            $second_val = (string) 'specs';
-            
-            if (!isset($entry[$second_val], $entry[$first_val])) { continue; }
-        }
+        if (!isset($entry[$first_val], $entry[$second_val])) { continue; }
 
-        if (!$devices)
-        {
-            $spec = (string) $entry[$second_val];
-            $serial = (string) $entry[$first_val][$type];
-        }
-        else
-        {
-            $serial = (string) $entry[$first_val];
-            $spec = (string) $entry[$second_val][$type];
-        }
+        $serial = $entry[$first_val];
+        $spec = $entry[$second_val][$type];
 
-        $array_of_devices_by_serial[$serial]['vals'][$spec] = (int) ($array_of_devices_by_serial[$serial]['vals'][$spec] ?? 0) + 1;
+        if (!$devices) { swap_strings($serial, $spec); }
+
+        # Increment amount of types; avoid null
+        $array_of_devices_by_serial[$serial]['vals'][$spec] = ($array_of_devices_by_serial[$serial]['vals'][$spec] ?? 0) + 1;
     }
 
+    # Edit values of $array_of_devices_by_serial by ref.
     foreach ($array_of_devices_by_serial as $serial => &$value)
     {
-        $value = (array)
+        $value =
         [
             count($value['vals']),
             $value['vals'],
             $serial
         ];
     }
+    # Unset ref.
     unset($value);
 
     arsort($array_of_devices_by_serial);
-    
-    $title = $description_counter = (string) 'Devices';
-    $description = (string) 'Serial no.';
+
+    $title = $description_counter = 'Devices';
+    $description = 'Serial no.';
 
     if (!$devices)
     {
         $title = $type;
         $description = $type;
         $description_counter = 'Serials';
-        
+
         if ($type === 'cpu') { $description = "Processor"; }
     }
-    
+
     echo '<div><h1>' . $title . '</h1>';
     foreach (array_slice($array_of_devices_by_serial, $start, $end) as $serial)
     {
@@ -135,18 +130,19 @@ function get_spec_related_fields(array $array_of_log_entries_adjusted, array $ar
 
 echo '<style>* { font-family: Consolas, monaco, monospace; } nav ul{height:200px; width:80%;} nav ul{overflow:hidden; overflow-y:scroll;} div {display:inline-block; vertical-align:top; padding: 1em; width: 30%; height: 47%; overflow: hidden; overflow-y:scroll;}</style>';
 
-$array_of_log_entries = (array) load_logfile_in_array();
-$array_of_log_entries_adjusted = (array) [];
+$array_of_log_entries = load_logfile_in_array();
+$array_of_log_entries_adjusted = [];
 
 # Merge data of serial and specs into one array.
-# Specs will be replaced by the MAC returned by load_specs.
+# Specs will be replaced by the value for given type returned by get_spec_related_fields.
 # TODO: adjust if using more fields in future.
 
-for ($i = (int) 0; $i < count($array_of_log_entries) - 1; $i+=2)
+for ($i = 0; $i < count($array_of_log_entries) - 1; $i+=2)
 {
-    $array_of_loaded_specs = (array) load_specs($array_of_log_entries[$i+1][2], $i+1);
-    $array_of_specs = (array) [];
+    $array_of_loaded_specs = load_specs($array_of_log_entries[$i+1][2], $i+1);
+    $array_of_specs = [];
 
+    # Count == 1 = invalid.
     if (count($array_of_loaded_specs) > 1)
     {
         $array_of_specs =
@@ -168,25 +164,23 @@ for ($i = (int) 0; $i < count($array_of_log_entries) - 1; $i+=2)
         ];
     }
 
-    $temp_array = (array)
+    $temp_array =
     [
         $array_of_log_entries[$i][1] => $array_of_log_entries[$i][2],
         $array_of_log_entries[$i+1][1] => $array_of_specs
     ];
 
-    $array_of_log_entries_adjusted[] = (array) $temp_array;
+    $array_of_log_entries_adjusted[] = $temp_array;
 }
 
-$array_of_serials = (array) array_count_values(array_column($array_of_log_entries_adjusted, 'serial'));
-$array_of_specs = (array) array_column($array_of_log_entries_adjusted, 'specs');
+$array_of_serials = array_count_values(array_column($array_of_log_entries_adjusted, 'serial'));
 arsort($array_of_serials);
-
 get_top_serial_by_connections($array_of_serials, 0, 10);
 
-get_spec_related_fields($array_of_log_entries_adjusted, $array_of_specs, 0, 10);
+get_spec_related_fields($array_of_log_entries_adjusted, 0, 10);
 foreach (['cpu', 'machine', 'architecture'] as $type)
 {
-    get_spec_related_fields($array_of_log_entries_adjusted, $array_of_specs, 0, 10, false, $type);
+    get_spec_related_fields($array_of_log_entries_adjusted, 0, 10, false, $type);
 }
 
 ?>
