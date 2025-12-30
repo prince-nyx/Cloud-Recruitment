@@ -8,25 +8,29 @@ set_error_handler(function ($severity, $message, $file, $line)
     throw new ErrorException($message, 0, $severity, $file, $line);
 });
 
-function load_logfile_in_array(): array | false
+function load_logfile_in_array(): array
 {
     # Matches the wanted fields (currently: serial & specs) in the logfile and returns them.
     # Sepcs is used since a few lines have this typo. // most likely a wanted stepping stone :).
 
-    $env_var_logfile = 'LOGFILE';
+    $env_var_logfile = $_GET['path'] ?? null;
     $regex = '/(sepcs|specs|serial)=([^ \t\r\n]+)/';
 
     try
     {
         $array_of_matches = [];
-        preg_match_all($regex, file_get_contents(getenv($env_var_logfile)), $array_of_matches, PREG_SET_ORDER);
+        if (file_exists($env_var_logfile))
+        {
+            preg_match_all($regex, file_get_contents($env_var_logfile), $array_of_matches, PREG_SET_ORDER);
+            return $array_of_matches;
+        }
 
-        return $array_of_matches;
+        return [];
     }
     catch (TypeError $exception)
     {
         error_log($exception->getMessage()."\n", 3, logfile_path);
-        return false;
+        return [];
     }
 }
 
