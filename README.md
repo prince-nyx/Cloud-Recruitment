@@ -1,3 +1,7 @@
+# Usage
+`php -S localhost:8000 main.php`<br>
+`http://localhost:8000/?path=logfile`
+
 # Cloud Recruitment
 > You are free to choose plain PHP or a framework as long as you are able to explain your choice.
 
